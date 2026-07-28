@@ -54,6 +54,10 @@ pub struct Network {
     #[serde(serialize_with = "seq_quote_whitespace")]
     pub label: Vec<String>,
 
+    /// Override the name of the Podman network created by this Quadlet.
+    #[serde(rename = "NetworkName")]
+    pub name: Option<String>,
+
     /// Set driver specific options.
     pub options: Vec<String>,
 
@@ -126,7 +130,6 @@ impl TryFrom<compose_spec::Network> for Network {
 
         let unsupported_options = [
             ("attachable", !attachable),
-            ("name", name.is_none()),
             ("ipam.options", ipam_options.is_empty()),
         ];
         for (option, not_present) in unsupported_options {
@@ -147,6 +150,7 @@ impl TryFrom<compose_spec::Network> for Network {
             ipam_driver,
             internal,
             label: labels.into_list().into_iter().collect(),
+            name,
             ..Self::default()
         };
 
@@ -267,6 +271,21 @@ mod tests {
         assert_eq!(
             crate::serde::quadlet::to_string_join_all(network)?,
             "[Network]\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn compose_network_name() -> Result<(), crate::serde::quadlet::Error> {
+        let network = compose_spec::Network {
+            name: Some("explicit-network-name".into()),
+            ..compose_spec::Network::default()
+        };
+        let network = Network::try_from(network).unwrap();
+
+        assert_eq!(
+            crate::serde::quadlet::to_string_join_all(network)?,
+            "[Network]\nNetworkName=explicit-network-name\n"
         );
         Ok(())
     }
