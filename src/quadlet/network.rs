@@ -55,8 +55,8 @@ pub struct Network {
     pub label: Vec<String>,
 
     /// Override the name of the Podman network created by this Quadlet.
-    #[serde(rename = "NetworkName")]
-    pub name: Option<String>,
+    #[expect(clippy::struct_field_names, reason = "Quadlet option")]
+    pub network_name: Option<String>,
 
     /// Set driver specific options.
     pub options: Vec<String>,
@@ -86,10 +86,10 @@ impl Downgrade for Network {
         }
 
         if version < PodmanVersion::V4_7 {
-            if let Some(name) = self.name.take() {
+            if let Some(network_name) = self.network_name.take() {
                 return Err(DowngradeError::Option {
                     quadlet_option: "NetworkName",
-                    value: name,
+                    value: network_name,
                     supported_version: PodmanVersion::V4_7,
                 });
             }
@@ -125,7 +125,7 @@ impl TryFrom<compose_spec::Network> for Network {
             ipam,
             internal,
             labels,
-            name,
+            name: network_name,
             extensions,
         }: compose_spec::Network,
     ) -> Result<Self, Self::Error> {
@@ -158,7 +158,7 @@ impl TryFrom<compose_spec::Network> for Network {
             ipam_driver,
             internal,
             label: labels.into_list().into_iter().collect(),
-            name,
+            network_name,
             ..Self::default()
         };
 
@@ -301,7 +301,7 @@ mod tests {
     #[test]
     fn network_name_added_in_v4_7() -> color_eyre::Result<()> {
         let mut network = Network {
-            name: Some("explicit-network-name".into()),
+            network_name: Some("explicit-network-name".into()),
             ..Network::default()
         };
 
@@ -316,12 +316,15 @@ mod tests {
         );
 
         let mut network = Network {
-            name: Some("explicit-network-name".into()),
+            network_name: Some("explicit-network-name".into()),
             ..Network::default()
         };
 
         network.downgrade(PodmanVersion::V4_7)?;
-        assert_eq!(network.name.as_deref(), Some("explicit-network-name"));
+        assert_eq!(
+            network.network_name.as_deref(),
+            Some("explicit-network-name")
+        );
         Ok(())
     }
 }

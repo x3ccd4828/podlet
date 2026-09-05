@@ -175,7 +175,7 @@ impl From<Create> for crate::quadlet::Network {
             ip_range,
             ipv6,
             label,
-            name: None,
+            network_name: None,
             options: opt,
             podman_args: (!podman_args.is_empty()).then_some(podman_args),
             subnet,
