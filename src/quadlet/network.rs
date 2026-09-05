@@ -86,6 +86,14 @@ impl Downgrade for Network {
         }
 
         if version < PodmanVersion::V4_7 {
+            if let Some(name) = self.name.take() {
+                return Err(DowngradeError::Option {
+                    quadlet_option: "NetworkName",
+                    value: name,
+                    supported_version: PodmanVersion::V4_7,
+                });
+            }
+
             for dns in std::mem::take(&mut self.dns) {
                 self.push_arg("dns", &dns);
             }
@@ -287,6 +295,33 @@ mod tests {
             crate::serde::quadlet::to_string_join_all(network)?,
             "[Network]\nNetworkName=explicit-network-name\n"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn network_name_added_in_v4_7() -> color_eyre::Result<()> {
+        let mut network = Network {
+            name: Some("explicit-network-name".into()),
+            ..Network::default()
+        };
+
+        let error = network
+            .downgrade(PodmanVersion::V4_6)
+            .err()
+            .ok_or_else(|| eyre!("expected NetworkName to be rejected before Podman v4.7"))?;
+
+        assert_eq!(
+            error.to_string(),
+            "Quadlet option `NetworkName=explicit-network-name` was not supported until Podman v4.7"
+        );
+
+        let mut network = Network {
+            name: Some("explicit-network-name".into()),
+            ..Network::default()
+        };
+
+        network.downgrade(PodmanVersion::V4_7)?;
+        assert_eq!(network.name.as_deref(), Some("explicit-network-name"));
         Ok(())
     }
 }
